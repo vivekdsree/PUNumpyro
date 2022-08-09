@@ -267,11 +267,11 @@ def f(vals,t,par):
 
 
 @jit
-def acute_solver(par,time):
+def acute_solver(par,time, v0):
     '''
     Solve the ODE system for a given set of parameters and return the observed quantities
     '''
-    v0 = jnp.array([0.18,10.0,5.0,2.0,1.0,10.0,5.0,2.0,0.15,0.2,1.0,1.0]) # initial condition
+    # v0 = jnp.array([0.18,10.0,5.0,2.0,1.0,10.0,5.0,2.0,0.15,0.2,1.0,1.0]) # initial condition
     odesol = odeint(f,v0,time,par)
     [rhok_sol,rhon_sol,rhom_sol,ta_sol,tb_sol,kc_sol] = [odesol[:,0],odesol[:,1],odesol[:,2]+odesol[:,3],odesol[:,5],odesol[:,7],odesol[:,-1]]
     return jnp.array([rhok_sol,rhon_sol,rhom_sol,ta_sol,tb_sol,kc_sol])
