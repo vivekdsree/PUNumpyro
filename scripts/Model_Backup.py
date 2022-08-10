@@ -1,7 +1,7 @@
 def model(id=ids, data1 =None, data2=None, data3=None, data4=None):
     """
     :id tuple(jnp.ndarray)  : Observed time indices of keratinocytes, neutrophils, macrophages and TNFa
-    :data tuple(jnp.ndarray): Observed data points of keratinocytes, neutrophils, macrophages and TNFa
+    :datas (jnp.ndarray): Observed data points of keratinocytes, neutrophils, macrophages and TNFa
     """
     # v0 = numpyro.deterministic("v0",jnp.array([0.18,10.0,5.0,2.0,1.0,10.0,5.0,2.0,0.15,0.2,1.0,1.0]))
     v0 = numpyro.sample(
@@ -11,6 +11,7 @@ def model(id=ids, data1 =None, data2=None, data3=None, data4=None):
             high=jnp.array([0.2, 15.0, 8.0, 8.0, 1.01, 15.0, 8.0, 4.0, 0.151, 0.201, 1.01, 1.01]),
         ),
     )
+    
     lkTa =numpyro.sample("lkTa", dist.Uniform(low=0.4, high=0.6))
     lkI1b =numpyro.deterministic("lkI1b", 0.07)
     lkR =numpyro.deterministic("lkR", 0.07)
@@ -32,35 +33,30 @@ def model(id=ids, data1 =None, data2=None, data3=None, data4=None):
     lm2Tb =numpyro.deterministic("lm2Tb", 0.2)
     alpha_m1n =numpyro.deterministic("alpha_m1n", 0.0001)
     alpha_m1m2 =numpyro.deterministic("alpha_m1m2", 0.0001)
+    
+    sig1 =numpyro.sample("sig1", dist.HalfCauchy(scale=0.1))
+    sig2 =numpyro.sample("sig2", dist.HalfCauchy(scale=0.5))
+    sig3 =numpyro.sample("sig3", dist.HalfCauchy(scale=0.5))
+    sig4 =numpyro.sample("sig4", dist.HalfCauchy(scale=0.5))
 
-    sig1 =numpyro.sample("sig1", dist.HalfCauchy(scale=0.01))
-    sig2 =numpyro.sample("sig2", dist.HalfCauchy(scale=0.1))
-    sig3 =numpyro.sample("sig3", dist.HalfCauchy(scale=0.1))
-    sig4 =numpyro.sample("sig4", dist.HalfCauchy(scale=0.1))
-
-    # sig1 =numpyro.deterministic("sig1", 0.2)
-    # sig2 =numpyro.deterministic("sig2", 3.0)
-    # sig3 =numpyro.deterministic("sig3", 2.0)
-    # sig4 =numpyro.deterministic("sig4", 3.0)
 
     par = jnp.array([lkTa, lkI1b,lkR, lkTb,lnKC, lnDa,Tahf, lm1Ta, I1bhfm1,lm1I1b,
                         lmKcm1, Tbhfm1, lm1Tb,I1bhfm2,lm2I1b, Tbhfm2,lm2Tb,alpha_m1n,
                         alpha_m1m2])
     times = jnp.linspace(0,480,480)
 
-    ode_solution = acute_solver(par,times,v0)
-    #rhok_sol,rhon_sol,rhom_sol,ta_sol
-    sol = numpyro.deterministic("sol",ode_solution)
+    ode_solution = acute_solver(par,times,v0) # acute_solver returns ([rhok_sol,rhon_sol,rhom_sol,ta_sol])
     
-    y_rhok = numpyro.sample('y_rhok', dist.TruncatedNormal(ode_solution[0, ids[0]], sig1, low=0,high=1.0), obs=data1)
-    y_rhon = numpyro.sample('y_rhon', dist.TruncatedNormal(ode_solution[1, ids[1]], sig2,low=0.0), obs=data2)
-    y_rhom = numpyro.sample('y_rhom', dist.TruncatedNormal(ode_solution[2, ids[2]], sig3,low=0.0), obs=data3)
-    y_ta   = numpyro.sample('y_ta', dist.TruncatedNormal(ode_solution[3, ids[3]], sig4,low=0.0), obs=data4)
+    sol = numpyro.deterministic("sol",ode_solution)
 
-    # #For sampling posterior dynamics
+    y_rhok = numpyro.sample('y_rhok', dist.Normal(ode_solution[0, ids[0]], sig1), obs=data1)
+    y_rhon = numpyro.sample('y_rhon', dist.Normal(ode_solution[1, ids[1]], sig2), obs=data2)
+    y_rhom = numpyro.sample('y_rhom', dist.Normal(ode_solution[2, ids[2]], sig3), obs=data3)
+    y_ta   = numpyro.sample('y_ta', dist.Normal(ode_solution[3, ids[3]], sig4), obs=data4)
+
+    # # For sampling posterior dynamics
     # rhok_dyn = numpyro.sample('rhok_dyn', dist.Normal(ode_solution[0,:], sig1))
     # rhon_dyn = numpyro.sample('rhon_dyn', dist.Normal(ode_solution[1,:], sig2))
     # rhom_dyn = numpyro.sample('rhom_dyn', dist.Normal(ode_solution[2,:], sig3))
     # ta_dyn = numpyro.sample('ta_dyn', dist.Normal(ode_solution[3,:], sig4))
-
     
